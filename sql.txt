@@ -1,0 +1,101 @@
+TASK 1 ----
+
+CREATE SCHEMA IF NOT EXISTS pandemic;
+USE pandemic;
+
+TASK 2 ---
+
+CREATE TABLE entities (
+    entity_id INT PRIMARY KEY auto_increment,
+    entity_name VARCHAR(255) UNIQUE,
+    code VARCHAR(50) UNIQUE
+);
+
+INSERT INTO entities (entity_name, code)
+SELECT DISTINCT Entity, Code
+FROM infectious_cases;
+
+CREATE TABLE infectious_cases_normalized (
+    case_id INT PRIMARY KEY auto_increment,
+    entity_id INT REFERENCES entities(entity_id),
+    Year INT,
+    Number_yaws VARCHAR(50),
+    polio_cases INT,
+    cases_guinea_worm INT,
+    Number_rabies VARCHAR(50),
+    Number_malaria VARCHAR(50),
+    Number_hiv VARCHAR(50),
+    Number_tuberculosis VARCHAR(50),
+    Number_smallpox VARCHAR(50),
+    Number_cholera_cases VARCHAR(50)
+);
+
+INSERT INTO infectious_cases_normalized (
+    entity_id, Year, Number_yaws, polio_cases, cases_guinea_worm,
+    Number_rabies, Number_malaria, Number_hiv, Number_tuberculosis,
+    Number_smallpox, Number_cholera_cases
+)
+SELECT 
+    e.entity_id, 
+    ic.Year,
+    ic.Number_yaws,
+    ic.polio_cases,
+    ic.cases_guinea_worm,
+    ic.Number_rabies,
+    ic.Number_malaria,
+    ic.Number_hiv,
+    ic.Number_tuberculosis,
+    ic.Number_smallpox,
+    ic.Number_cholera_cases
+FROM 
+    infectious_cases AS ic
+JOIN 
+    entities AS e ON ic.Entity = e.entity_name AND ic.Code = e.code;
+
+
+TASK 3 ----
+
+SELECT 
+    e.entity_name, 
+    e.code, 
+    ROUND(AVG(CAST(number_rabies AS FLOAT)),2) AS avg_rabies,
+    ROUND(MIN(CAST(number_rabies AS FLOAT)),2) AS min_rabies,
+    ROUND(MAX(CAST(number_rabies AS FLOAT)),2) AS max_rabies,
+    ROUND(SUM(CAST(number_rabies AS FLOAT)),2) AS total_rabies
+FROM infectious_cases_normalized ic
+JOIN entities e ON ic.entity_id = e.entity_id
+WHERE number_rabies IS NOT NULL AND number_rabies != ''
+GROUP BY e.entity_name, e.code
+ORDER BY avg_rabies DESC
+LIMIT 10;
+
+TASK 4 ----
+
+SELECT 
+    Year,
+    MAKEDATE(Year, 1) AS StartOfYear,
+    CURDATE() AS CurrentDate,
+    YEAR(CURDATE()) - Year  AS  YearDifference
+FROM 
+    infectious_cases_normalized;
+
+
+TASK 5 ---
+
+DROP FUNCTION IF EXISTS YearDifference;
+
+DELIMITER //
+
+CREATE FUNCTION YearDifference(input_year INT)
+RETURNS INT
+DETERMINISTIC
+NO SQL
+BEGIN
+    RETURN YEAR(CURDATE()) - YEAR(MAKEDATE(input_year, 1));
+END //
+
+DELIMITER ;
+
+SELECT YearDifference(1987);
+
+
